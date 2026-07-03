@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2 text-accent me-2"></i>Overview{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_admin.html" %}{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Total Users</div><div class="value">{{ stats.total_users }}</div><div class="sub">All roles</div></div>
+      <div class="icon icon-purple"><i class="bi bi-people-fill"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Active Bookings</div><div class="value">{{ stats.active_bookings }}</div><div class="sub">Confirmed & pending</div></div>
+      <div class="icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Total Revenue</div><div class="value">€{{ "{:,.0f}".format(stats.total_revenue or 0) }}</div><div class="sub">Captured payments</div></div>
+      <div class="icon icon-green"><i class="bi bi-currency-euro"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Unverified Guests</div><div class="value">{{ stats.unverified_count }}</div><div class="sub">Upcoming check-ins</div></div>
+      <div class="icon icon-rose"><i class="bi bi-person-exclamation"></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card-white mb-3">
+      <div class="card-header-line"><h6><i class="bi bi-lightning-charge text-accent me-2"></i>Quick Actions</h6></div>
+      <div class="p-4 d-flex flex-wrap gap-2">
+        <a href="{{ url_for('admin.analytics') }}" class="btn btn-accent"><i class="bi bi-bar-chart-line me-2"></i>Analytics</a>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-people me-1"></i>Users</a>
+        <a href="{{ url_for('admin.bookings') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-calendar-check me-1"></i>Bookings</a>
+        <a href="{{ url_for('admin.access_audit') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-shield-lock me-1"></i>Audit Log</a>
+        {% if stats.unverified_count > 0 %}
+        <a href="{{ url_for('admin.unverified_guests') }}" class="btn btn-warning btn-sm px-3 py-2"><i class="bi bi-person-exclamation me-1"></i>{{ stats.unverified_count }} Unverified</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card-white">
+      <div class="card-header-line"><h6><i class="bi bi-info-circle text-accent me-2"></i>System Info</h6></div>
+      <div class="p-4">
+        <dl class="row mb-0" style="font-size:.855rem">
+          <dt class="col-6" style="color:var(--text-secondary)">Database</dt><dd class="col-6">rental_access_db</dd>
+          <dt class="col-6" style="color:var(--text-secondary)">Tables</dt><dd class="col-6">46</dd>
+          <dt class="col-6" style="color:var(--text-secondary)">Views</dt><dd class="col-6">7 reporting views</dd>
+          <dt class="col-6" style="color:var(--text-secondary)">Procedures</dt><dd class="col-6">4 stored procedures</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

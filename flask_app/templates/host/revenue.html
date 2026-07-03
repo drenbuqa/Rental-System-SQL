@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Revenue — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-graph-up-arrow text-accent me-2"></i>Revenue Summary{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_host.html" %}{% endblock %}
+
+{% block content %}
+{% if revenue %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card"><div><div class="label">Gross Revenue</div><div class="value">€{{ "{:,.2f}".format(revenue.gross_revenue or 0) }}</div></div><div class="icon icon-green"><i class="bi bi-currency-euro"></i></div></div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card"><div><div class="label">Net Paid Out</div><div class="value">€{{ "{:,.2f}".format(revenue.net_paid_out or 0) }}</div></div><div class="icon icon-blue"><i class="bi bi-bank"></i></div></div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card"><div><div class="label">Pending Payout</div><div class="value">€{{ "{:,.2f}".format(revenue.pending_payout or 0) }}</div></div><div class="icon icon-amber"><i class="bi bi-clock-history"></i></div></div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card"><div><div class="label">Total Bookings</div><div class="value">{{ revenue.total_bookings or 0 }}</div></div><div class="icon icon-purple"><i class="bi bi-calendar-check-fill"></i></div></div>
+  </div>
+</div>
+<div class="card-white">
+  <div class="card-header-line"><h6>Host Details</h6></div>
+  <div class="p-4">
+    <dl class="row mb-0" style="font-size:.875rem">
+      <dt class="col-sm-3" style="color:var(--text-secondary)">Name</dt><dd class="col-sm-9 fw-semibold">{{ revenue.host_name }}</dd>
+      <dt class="col-sm-3" style="color:var(--text-secondary)">Superhost</dt>
+      <dd class="col-sm-9">{% if revenue.is_superhost %}<span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Superhost</span>{% else %}No{% endif %}</dd>
+      <dt class="col-sm-3" style="color:var(--text-secondary)">Properties</dt><dd class="col-sm-9">{{ revenue.total_properties }}</dd>
+    </dl>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-secondary">No revenue data found for your account.</div>
+{% endif %}
+{% endblock %}

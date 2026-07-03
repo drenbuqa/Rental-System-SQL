@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Upcoming Check-ins — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-check text-accent me-2"></i>Upcoming Check-ins{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_host.html" %}{% endblock %}
+
+{% block content %}
+<div class="card-white">
+  <div class="card-header-line">
+    <h6>Upcoming Check-ins</h6>
+    <span class="badge bg-secondary">{{ checkins|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>#</th><th>Property</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Guests</th><th>Status</th><th>Verified</th><th>Codes</th></tr></thead>
+      <tbody>
+      {% for c in checkins %}
+      {% set sc = {'confirmed':'green','pending':'yellow','cancelled':'red','checked_in':'blue'} %}
+      <tr>
+        <td class="text-muted">#{{ c.booking_id }}</td>
+        <td class="fw-medium">{{ c.property_title }}</td>
+        <td>
+          <div class="fw-medium">{{ c.guest_name }}</div>
+          <div class="text-muted" style="font-size:.75rem">{{ c.guest_email }}</div>
+        </td>
+        <td class="fw-medium">{{ c.check_in_date }}</td>
+        <td class="text-muted">{{ c.check_out_date }}</td>
+        <td>{{ c.num_guests }}</td>
+        <td><span class="sb sb-{{ sc.get(c.booking_status,'gray') }}">{{ c.booking_status }}</span></td>
+        <td>{% if c.verification_status == 'verified' %}<span class="sb sb-green">Verified</span>{% else %}<span class="sb sb-yellow">{{ c.verification_status or 'Unverified' }}</span>{% endif %}</td>
+        <td>{% if c.active_codes %}<span class="sb sb-indigo">{{ c.active_codes }} code(s)</span>{% else %}<span class="text-muted">None</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      {% if not checkins %}<tr><td colspan="9" class="text-center text-muted py-4">No upcoming check-ins.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

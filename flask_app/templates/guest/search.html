@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Search Properties — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-search text-accent me-2"></i>Search Properties{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+<div class="card-white mb-4">
+  <div class="p-4">
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">City</label>
+        <select name="city" class="form-select" required>
+          <option value="">— Select city —</option>
+          {% for c in cities %}<option value="{{ c }}" {{ 'selected' if c == city }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Check-in</label>
+        <input type="date" name="check_in" class="form-control" value="{{ check_in }}" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Check-out</label>
+        <input type="date" name="check_out" class="form-control" value="{{ check_out }}" required/>
+      </div>
+      <div class="col-md-1">
+        <label class="form-label">Guests</label>
+        <input type="number" name="guests" class="form-control" min="1" max="20" value="{{ guests or 1 }}" required/>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-accent w-100"><i class="bi bi-search me-2"></i>Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <p class="mb-0 text-muted" style="font-size:.875rem">
+    <strong class="text-primary">{{ properties|length }}</strong> propert{{ 'y' if properties|length == 1 else 'ies' }}
+    {% if city %} in <strong class="text-primary">{{ city }}</strong>{% endif %}
+    {% if check_in and check_out %} · {{ check_in }} → {{ check_out }}{% endif %}
+  </p>
+</div>
+<div class="row g-3">
+  {% for p in properties %}
+  <div class="col-md-6 col-xl-4">
+    <div class="prop-card h-100 d-flex flex-column">
+      {% set cover = photos_map.get(p.property_id) %}
+      {% if cover %}
+      <div class="prop-card-img" style="padding:0;overflow:hidden">
+        <img src="{{ cover }}" alt="{{ p.title }}" style="width:100%;height:100%;object-fit:cover;display:block"/>
+      </div>
+      {% else %}
+      <div class="prop-card-img">
+        <i class="bi bi-{{ 'buildings' if 'apartment' in p.property_type|lower else ('house' if 'house' in p.property_type|lower else 'door-open') }}"></i>
+      </div>
+      {% endif %}
+      <div class="prop-card-body d-flex flex-column flex-grow-1">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <span class="badge" style="background:#e0e7ff;color:#4338ca;font-size:.7rem">{{ p.property_type }}</span>
+          {% if p.avg_rating %}
+          <span style="font-size:.82rem;font-weight:600;color:#d97706"><i class="bi bi-star-fill"></i> {{ "%.1f"|format(p.avg_rating) }} <span class="fw-normal text-muted">({{ p.review_count }})</span></span>
+          {% endif %}
+        </div>
+        <h6 class="fw-bold mb-1" style="font-size:.9rem">{{ p.title }}</h6>
+        <p class="text-muted mb-2" style="font-size:.78rem"><i class="bi bi-geo-alt me-1"></i>{{ p.city_name }}, {{ p.country_name }}</p>
+        <div class="d-flex gap-3 text-muted mb-2" style="font-size:.78rem">
+          <span><i class="bi bi-people me-1"></i>{{ p.max_guests }}</span>
+          <span><i class="bi bi-door-closed me-1"></i>{{ p.bedrooms }} bed</span>
+          <span><i class="bi bi-droplet me-1"></i>{{ p.bathrooms }} bath</span>
+        </div>
+        {% set amens = amenities_map.get(p.property_id, []) %}
+        {% if amens %}
+        <div class="d-flex flex-wrap gap-1 mb-3">
+          {% for a in amens[:5] %}
+          <span style="font-size:.68rem;background:#f1f5f9;color:#475569;padding:.2em .55em;border-radius:5px">{{ a }}</span>
+          {% endfor %}
+          {% if amens|length > 5 %}
+          <span style="font-size:.68rem;background:#f1f5f9;color:#94a3b8;padding:.2em .55em;border-radius:5px">+{{ amens|length - 5 }} more</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="mb-3"></div>
+        {% endif %}
+        <div class="mt-auto d-flex justify-content-between align-items-center pt-2" style="border-top:1px solid var(--border)">
+          <div>
+            <span class="prop-card-price">€{{ p.base_price_night }}</span>
+            <span class="text-muted" style="font-size:.75rem">/night</span>
+            {% if p.cleaning_fee %}<div class="text-muted" style="font-size:.72rem">+ €{{ p.cleaning_fee }} cleaning</div>{% endif %}
+          </div>
+          <a href="{{ url_for('guest.book', property_id=p.property_id, check_in=check_in, check_out=check_out) }}" class="btn btn-accent btn-sm px-3">Book</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% if not properties %}
+  <div class="col-12">
+    <div class="card-white p-5 text-center">
+      <i class="bi bi-house-x display-4 text-muted d-block mb-3"></i>
+      <h6 class="text-muted">No available properties match your search</h6>
+      <p class="text-muted" style="font-size:.875rem">Try different dates or a different city.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

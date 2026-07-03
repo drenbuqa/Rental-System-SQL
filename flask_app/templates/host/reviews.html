@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Property Reviews — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-star text-accent me-2"></i>Property Reviews{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_host.html" %}{% endblock %}
+
+{% block content %}
+{% if reviews %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <span class="text-muted" style="font-size:.875rem">
+    <strong>{{ reviews|length }}</strong> review{{ 's' if reviews|length != 1 else '' }} across your properties
+  </span>
+  {% if reviews %}
+  {% set avg = (reviews|sum(attribute='overall_rating') / reviews|length) %}
+  <div class="d-flex align-items-center gap-1" style="color:#f59e0b">
+    <i class="bi bi-star-fill"></i>
+    <span class="fw-bold" style="color:var(--text-primary)">{{ "%.1f"|format(avg) }}</span>
+    <span class="text-muted" style="font-size:.8rem">average</span>
+  </div>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  {% for r in reviews %}
+  {% set cats = scores_map.get(r.review_id, {}) %}
+  {% set has_response = r.review_id in responded_ids %}
+  <div class="col-12">
+    <div class="card-white">
+      <div class="p-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <div class="fw-semibold" style="font-size:.95rem">{{ r.property_title }}</div>
+            <div class="text-muted" style="font-size:.78rem;margin-top:.2rem">
+              Guest: <strong>{{ r.guest_name }}</strong> &nbsp;·&nbsp;
+              {{ r.check_in_date }} → {{ r.check_out_date }} &nbsp;·&nbsp;
+              {{ r.created_at.strftime('%d %b %Y') if r.created_at else '' }}
+            </div>
+          </div>
+          <div class="d-flex flex-column align-items-end gap-1">
+            <div class="d-flex align-items-center gap-1" style="color:#f59e0b;font-size:1rem">
+              {% for i in range(1,6) %}
+                <i class="bi bi-star{% if i <= r.overall_rating %}-fill{% endif %}"></i>
+              {% endfor %}
+              <span class="ms-1 fw-bold" style="font-size:.85rem;color:var(--text-primary)">{{ r.overall_rating }}/5</span>
+            </div>
+            {% if has_response %}
+            <span class="sb sb-green" style="font-size:.68rem">Responded</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Category scores -->
+        {% if cats %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for cat_name, score in cats.items() %}
+          <div class="px-3 py-1 rounded-3" style="background:#f8fafc;border:1px solid var(--border);font-size:.78rem">
+            <span class="text-muted">{{ cat_name }}</span>
+            <span class="ms-2 fw-semibold" style="color:#f59e0b">
+              {% for i in range(1,6) %}<i class="bi bi-star{% if i <= score %}-fill{% endif %}" style="font-size:.7rem"></i>{% endfor %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Comment -->
+        <p style="font-size:.875rem;color:var(--text-secondary);line-height:1.6;margin-bottom:{% if not has_response %}1rem{% else %}0{% endif %}">
+          {{ r.comment }}
+        </p>
+
+        <!-- Respond form -->
+        {% if not has_response %}
+        <div style="border-top:1px solid var(--border);padding-top:1rem">
+          <div class="fw-semibold mb-2" style="font-size:.8rem;color:var(--text-secondary)">
+            <i class="bi bi-chat-left-text me-1"></i>Reply to this review
+          </div>
+          <form method="POST" action="{{ url_for('host.respond_review', review_id=r.review_id) }}">
+            <div class="d-flex gap-2">
+              <textarea name="response_text" class="form-control" rows="2"
+                placeholder="Thank the guest or address their feedback…" style="font-size:.85rem" required></textarea>
+              <button type="submit" class="btn btn-accent btn-sm px-3" style="align-self:flex-end;white-space:nowrap">
+                <i class="bi bi-send me-1"></i>Post Reply
+              </button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-white p-5 text-center">
+  <i class="bi bi-star display-4 text-muted d-block mb-3"></i>
+  <h6 class="text-muted">No reviews yet</h6>
+  <p class="text-muted" style="font-size:.875rem">Reviews from guests will appear here after completed stays.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Book — {{ prop.title }}{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-plus text-accent me-2"></i>Book Property{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+<!-- Step bar -->
+<div class="step-bar mb-4">
+  <div class="step {{ 'done' if step > 1 else 'active' if step == 1 else '' }}">
+    <div class="num">{% if step > 1 %}<i class="bi bi-check"></i>{% else %}1{% endif %}</div> Details
+  </div>
+  <div class="line {{ 'done' if step > 1 else '' }}"></div>
+  <div class="step {{ 'active' if step == 2 else ('done' if step > 2 else '') }}">
+    <div class="num">{% if step > 2 %}<i class="bi bi-check"></i>{% else %}2{% endif %}</div> Payment
+  </div>
+  <div class="line {{ 'done' if step > 2 else '' }}"></div>
+  <div class="step {{ 'active' if step == 3 else '' }}">
+    <div class="num">3</div> Confirmation
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Left: form -->
+  <div class="col-lg-7">
+    {% if step == 1 %}
+    <div class="card-white">
+      <div class="card-header-line"><h6>Stay Details</h6></div>
+      <div class="p-4">
+        <form method="POST">
+          <input type="hidden" name="step" value="1"/>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Check-in Date</label>
+              <input type="date" name="check_in" class="form-control" value="{{ check_in }}" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Check-out Date</label>
+              <input type="date" name="check_out" class="form-control" value="{{ check_out }}" required/>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Guests</label>
+              <input type="number" name="num_guests" class="form-control" min="1" max="{{ prop.max_guests }}" value="1" required/>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Special Requests <span class="text-muted fw-normal">(optional)</span></label>
+              <textarea name="special_requests" class="form-control" rows="2" placeholder="Late check-in, dietary needs, accessibility requirements…"></textarea>
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-accent px-4">Continue to Payment →</button>
+            <a href="{{ url_for('guest.search') }}" class="btn btn-outline-secondary">Back</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% elif step == 2 %}
+    <div class="card-white">
+      <div class="card-header-line"><h6>Payment Details</h6></div>
+      <div class="p-4">
+        <form method="POST">
+          <input type="hidden" name="step" value="2"/>
+          <input type="hidden" name="check_in" value="{{ booking_data.check_in }}"/>
+          <input type="hidden" name="check_out" value="{{ booking_data.check_out }}"/>
+          <input type="hidden" name="num_guests" value="{{ booking_data.num_guests }}"/>
+          <input type="hidden" name="special_requests" value="{{ booking_data.special_requests }}"/>
+
+          <div class="mb-3">
+            <label class="form-label">Payment Method</label>
+            <div class="d-flex flex-column gap-2">
+              {% for m in payment_methods %}
+              <label class="d-flex align-items-center gap-3 p-3 rounded-3 border" style="cursor:pointer;border-color:var(--border)!important">
+                <input type="radio" name="method_id" value="{{ m.method_id }}" class="form-check-input mt-0" required/>
+                <div>
+                  <div class="fw-semibold" style="font-size:.875rem">{{ m.method_name }}</div>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 rounded-3" style="background:#f0fdf4;border:1.5px solid #bbf7d0">
+            <div class="d-flex justify-content-between fw-bold" style="font-size:.875rem">
+              <span>Total charge</span>
+              <span class="text-success">€{{ "%.2f"|format(booking_data.total) }}</span>
+            </div>
+            <div class="text-muted mt-1" style="font-size:.75rem">{{ booking_data.nights }} night(s) × €{{ "%.2f"|format(booking_data.nightly) }} + €{{ "%.2f"|format(booking_data.cleaning) }} cleaning</div>
+          </div>
+
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-accent px-4"><i class="bi bi-lock-fill me-2"></i>Confirm &amp; Pay →</button>
+            <a href="{{ request.url.replace('?', '?reset=1&') }}" class="btn btn-outline-secondary">Back</a>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: property summary -->
+  <div class="col-lg-5">
+    <div class="card-white" style="position:sticky;top:80px">
+      <div class="prop-card-img" style="border-radius:14px 14px 0 0">
+        <i class="bi bi-house-door-fill"></i>
+      </div>
+      <div class="p-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <span class="badge" style="background:#e0e7ff;color:#4338ca;font-size:.7rem">{{ prop.property_type }}</span>
+          {% if prop.avg_rating %}<span style="font-size:.82rem;font-weight:600;color:#d97706"><i class="bi bi-star-fill"></i> {{ "%.1f"|format(prop.avg_rating) }}</span>{% endif %}
+        </div>
+        <h6 class="fw-bold mb-1">{{ prop.title }}</h6>
+        <p class="text-muted mb-3" style="font-size:.8rem"><i class="bi bi-geo-alt me-1"></i>{{ prop.city_name }}, {{ prop.country_name }}</p>
+        <hr class="divider"/>
+        <div class="d-flex justify-content-between" style="font-size:.855rem">
+          <span class="text-muted">Nightly rate</span><span class="fw-semibold">€{{ prop.base_price_night }}</span>
+        </div>
+        {% if prop.cleaning_fee %}
+        <div class="d-flex justify-content-between mt-2" style="font-size:.855rem">
+          <span class="text-muted">Cleaning fee</span><span class="fw-semibold">€{{ prop.cleaning_fee }}</span>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between mt-2" style="font-size:.855rem">
+          <span class="text-muted">Host</span>
+          <span class="fw-semibold">{{ prop.host_name }}
+            {% if prop.is_superhost %}<span class="badge bg-warning text-dark ms-1" style="font-size:.62rem">Superhost</span>{% endif %}
+          </span>
+        </div>
+        {% if step == 2 %}
+        <hr class="divider"/>
+        <div class="d-flex justify-content-between fw-bold">
+          <span>Total</span><span class="text-success">€{{ "%.2f"|format(booking_data.total) }}</span>
+        </div>
+        <div class="text-muted mt-1" style="font-size:.75rem">{{ booking_data.nights }} night(s)</div>
+        {% endif %}
+        <div class="mt-3 p-2 rounded-2" style="background:#f8fafc;font-size:.75rem;color:var(--text-secondary)">
+          <i class="bi bi-shield-check me-1 text-success"></i>Free cancellation within 24 hours of booking.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

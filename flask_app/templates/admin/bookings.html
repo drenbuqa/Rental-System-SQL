@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Bookings — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-check text-accent me-2"></i>Bookings{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_admin.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <a href="{{ url_for('admin.bookings') }}" class="btn btn-sm {{ 'btn-accent' if current_status == 'all' else 'btn-outline-secondary' }}">All</a>
+  {% for s in statuses %}
+  <a href="{{ url_for('admin.bookings', status=s) }}" class="btn btn-sm {{ 'btn-accent' if current_status == s else 'btn-outline-secondary' }}">{{ s|capitalize }}</a>
+  {% endfor %}
+</div>
+<div class="card-white">
+  <div class="card-header-line">
+    <h6>Bookings</h6>
+    <span class="badge bg-secondary">{{ bookings|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>#</th><th>Guest</th><th>Property</th><th>Check-in</th><th>Check-out</th><th>Amount</th><th>Status</th><th>Booked</th></tr></thead>
+      <tbody>
+      {% for b in bookings %}
+      {% set sc = {'confirmed':'green','pending':'yellow','cancelled':'red','completed':'gray','checked_in':'blue'} %}
+      <tr>
+        <td class="text-muted fw-medium">#{{ b.booking_id }}</td>
+        <td>{{ b.guest_email }}</td>
+        <td class="fw-medium">{{ b.property_title }}</td>
+        <td>{{ b.check_in_date }}</td>
+        <td>{{ b.check_out_date }}</td>
+        <td class="fw-semibold">€{{ "{:,.2f}".format(b.total_amount or 0) }}</td>
+        <td><span class="sb sb-{{ sc.get(b.status_name,'gray') }}">{{ b.status_name }}</span></td>
+        <td class="text-muted">{{ b.booked_at.strftime('%d %b %Y') if b.booked_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+      {% if not bookings %}<tr><td colspan="8" class="text-center text-muted py-4">No bookings found.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

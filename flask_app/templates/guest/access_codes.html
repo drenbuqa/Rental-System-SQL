@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Access Codes — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-key text-accent me-2"></i>My Access Codes{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+{% if codes %}
+<div class="row g-3">
+  {% for c in codes %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card-white h-100">
+      <div class="p-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <div class="text-muted" style="font-size:.75rem">{{ c.property_title }}</div>
+            <div class="fw-semibold">{{ c.location_label }}</div>
+          </div>
+          {% if c.is_active %}<span class="sb sb-green">Active</span>
+          {% else %}<span class="sb sb-gray">Inactive</span>{% endif %}
+        </div>
+
+        <div class="text-center my-4 py-3 rounded-3" style="background:linear-gradient(135deg,#e0e7ff,#ede9fe)">
+          <div class="text-muted mb-1" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Door Code</div>
+          <div class="fw-black font-monospace" style="font-size:2.2rem;letter-spacing:.2em;color:#4338ca">{{ c.code_value }}</div>
+        </div>
+
+        <div style="font-size:.78rem;color:var(--text-secondary)">
+          <div class="d-flex justify-content-between mb-1">
+            <span>Check-in</span><span class="fw-medium">{{ c.check_in_date }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span>Check-out</span><span class="fw-medium">{{ c.check_out_date }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Valid until</span><span class="fw-medium">{{ c.valid_until }}</span>
+          </div>
+        </div>
+        <div class="mt-2 text-muted font-monospace" style="font-size:.7rem">{{ c.serial_number }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-white p-5 text-center">
+  <i class="bi bi-key display-4 text-muted d-block mb-3"></i>
+  <h6 class="text-muted mb-2">No active access codes</h6>
+  <p class="text-muted" style="font-size:.875rem">Door codes appear here once your booking is confirmed by the host.</p>
+  <a href="{{ url_for('guest.bookings') }}" class="btn btn-outline-secondary btn-sm">View My Bookings</a>
+</div>
+{% endif %}
+{% endblock %}

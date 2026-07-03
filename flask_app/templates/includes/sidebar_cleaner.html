@@ -1,0 +1,5 @@
+<span class="nav-label">Cleaner</span>
+<a href="{{ url_for('cleaner.dashboard') }}" class="nav-link {% if request.endpoint == 'cleaner.dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Overview</a>
+<a href="{{ url_for('cleaner.tasks') }}" class="nav-link {% if request.endpoint == 'cleaner.tasks' %}active{% endif %}"><i class="bi bi-list-check"></i> My Tasks</a>
+<a href="{{ url_for('cleaner.checkins') }}" class="nav-link {% if request.endpoint == 'cleaner.checkins' %}active{% endif %}"><i class="bi bi-calendar-check"></i> Upcoming Check-ins</a>
+<a href="{{ url_for('cleaner.my_codes') }}" class="nav-link {% if request.endpoint == 'cleaner.my_codes' %}active{% endif %}"><i class="bi bi-key"></i> My Codes</a>

@@ -1,0 +1,9 @@
+<span class="nav-label">Host</span>
+<a href="{{ url_for('host.dashboard') }}" class="nav-link {% if request.endpoint == 'host.dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Overview</a>
+<a href="{{ url_for('host.properties') }}" class="nav-link {% if request.endpoint == 'host.properties' %}active{% endif %}"><i class="bi bi-house-door"></i> My Properties</a>
+<a href="{{ url_for('host.add_property') }}" class="nav-link {% if request.endpoint == 'host.add_property' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Add Property</a>
+<a href="{{ url_for('host.checkins') }}" class="nav-link {% if request.endpoint == 'host.checkins' %}active{% endif %}"><i class="bi bi-calendar-check"></i> Upcoming Check-ins</a>
+<a href="{{ url_for('host.revenue') }}" class="nav-link {% if request.endpoint == 'host.revenue' %}active{% endif %}"><i class="bi bi-graph-up-arrow"></i> Revenue</a>
+<a href="{{ url_for('host.confirm_booking') }}" class="nav-link {% if request.endpoint == 'host.confirm_booking' %}active{% endif %}"><i class="bi bi-check-circle"></i> Confirm Booking</a>
+<a href="{{ url_for('host.maintenance') }}" class="nav-link {% if request.endpoint == 'host.maintenance' %}active{% endif %}"><i class="bi bi-tools"></i> Maintenance</a>
+<a href="{{ url_for('host.reviews') }}" class="nav-link {% if request.endpoint in ['host.reviews','host.respond_review'] %}active{% endif %}"><i class="bi bi-star"></i> Reviews</a>

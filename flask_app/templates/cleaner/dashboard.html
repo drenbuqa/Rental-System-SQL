@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cleaner Dashboard — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2 text-accent me-2"></i>My Dashboard{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_cleaner.html" %}{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6">
+    <div class="stat-card">
+      <div><div class="label">Pending Tasks</div><div class="value">{{ pending }}</div><div class="sub">Need attention</div></div>
+      <div class="icon icon-amber"><i class="bi bi-hourglass-split"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6">
+    <div class="stat-card">
+      <div><div class="label">Done Today</div><div class="value">{{ done_today }}</div><div class="sub">Completed</div></div>
+      <div class="icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
+    </div>
+  </div>
+</div>
+<div class="card-white">
+  <div class="card-header-line"><h6><i class="bi bi-lightning-charge text-accent me-2"></i>Quick Actions</h6></div>
+  <div class="p-4 d-flex flex-wrap gap-2">
+    <a href="{{ url_for('cleaner.tasks') }}" class="btn btn-accent"><i class="bi bi-list-check me-2"></i>View My Tasks</a>
+    <a href="{{ url_for('cleaner.checkins') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-calendar-check me-1"></i>Upcoming Check-ins</a>
+    <a href="{{ url_for('cleaner.my_codes') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-key me-1"></i>My Access Codes</a>
+  </div>
+</div>
+{% endblock %}

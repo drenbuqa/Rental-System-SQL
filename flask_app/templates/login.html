@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sign In — RentalAccess</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+    }
+    .left-panel {
+      width: 420px;
+      flex-shrink: 0;
+      background: linear-gradient(160deg, #1e1b4b 0%, #312e81 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem 2.5rem;
+    }
+    .left-panel .brand { display: flex; align-items: center; gap: .7rem; }
+    .left-panel .brand .icon {
+      width: 42px; height: 42px; background: rgba(255,255,255,.15);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; color: #fff;
+    }
+    .left-panel .brand-name { font-size: 1.15rem; font-weight: 800; color: #fff; }
+    .left-panel .brand-name span { color: #a5b4fc; }
+    .left-panel .tagline { color: rgba(255,255,255,.7); font-size: .875rem; margin-top: .3rem; }
+    .left-panel .features { margin-top: auto; padding-top: 3rem; }
+    .feature-item { display: flex; align-items: flex-start; gap: .75rem; margin-bottom: 1.5rem; }
+    .feature-icon {
+      width: 36px; height: 36px; background: rgba(255,255,255,.1);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; color: #a5b4fc; flex-shrink: 0; margin-top: .1rem;
+    }
+    .feature-title { font-size: .855rem; font-weight: 600; color: #fff; }
+    .feature-desc  { font-size: .775rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
+    .left-footer { font-size: .72rem; color: rgba(255,255,255,.3); margin-top: 2rem; }
+
+    .right-panel {
+      flex: 1;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .login-box { width: 100%; max-width: 400px; }
+    .login-box h2 { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: .35rem; }
+    .login-box .sub { color: #64748b; font-size: .875rem; margin-bottom: 2rem; }
+    .form-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #64748b; }
+    .form-control {
+      border: 1.5px solid #e2e8f0; border-radius: 9px;
+      padding: .65rem 1rem; font-size: .875rem; color: #0f172a;
+      background: #fff; transition: border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus {
+      border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); outline: none;
+    }
+    .btn-login {
+      width: 100%; padding: .7rem; border-radius: 9px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border: none; color: #fff; font-weight: 700; font-size: .9rem;
+      cursor: pointer; transition: opacity .15s, box-shadow .15s;
+    }
+    .btn-login:hover { opacity: .92; box-shadow: 0 6px 20px rgba(99,102,241,.35); }
+    .demo-box {
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      padding: 1.1rem 1.25rem; margin-top: 1.5rem;
+    }
+    .demo-title { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: #94a3b8; margin-bottom: .75rem; }
+    .demo-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .35rem 0; border-bottom: 1px solid #f1f5f9; font-size: .78rem;
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-role { font-weight: 700; color: #334155; }
+    .demo-cred { color: #64748b; font-family: monospace; font-size: .77rem; }
+    .error-box {
+      background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 9px;
+      padding: .7rem 1rem; margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .85rem; color: #be123c;
+    }
+    @media (max-width: 768px) {
+      .left-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="left-panel">
+  <div>
+    <div class="brand">
+      <div class="icon"><i class="bi bi-house-lock-fill"></i></div>
+      <div>
+        <div class="brand-name"><span>Rental</span>Access</div>
+        <div class="tagline">Smart Access Management</div>
+      </div>
+    </div>
+  </div>
+  <div class="features">
+    <div class="feature-item">
+      <div class="feature-icon"><i class="bi bi-key-fill"></i></div>
+      <div>
+        <div class="feature-title">Smart Lock Integration</div>
+        <div class="feature-desc">Automated door codes tied to confirmed bookings — no manual handoffs.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+      <div>
+        <div class="feature-title">Guest Verification</div>
+        <div class="feature-desc">Identity checks tracked end-to-end with compliance reporting.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+      <div>
+        <div class="feature-title">Revenue Analytics</div>
+        <div class="feature-desc">Real-time revenue, payout tracking, and property performance metrics.</div>
+      </div>
+    </div>
+  </div>
+  <div class="left-footer">© 2026 RentalAccess — Modul University Vienna</div>
+</div>
+
+<div class="right-panel">
+  <div class="login-box">
+    <h2>Welcome back</h2>
+    <p class="sub">Sign in to your account to continue.</p>
+
+    {% if error %}
+    <div class="error-box"><i class="bi bi-exclamation-circle-fill"></i> {{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="mb-3">
+        <label class="form-label">Email address</label>
+        <input type="email" name="email" class="form-control" placeholder="you@example.com" required autocomplete="email"/>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password"/>
+      </div>
+      <button type="submit" class="btn-login">Sign in</button>
+    </form>
+
+    <p style="text-align:center;margin-top:1rem;font-size:.83rem;color:#64748b">
+      New to RentalAccess?
+      <a href="/register" style="color:#6366f1;font-weight:600;text-decoration:none">Create an account</a>
+    </p>
+
+    <div class="demo-box">
+      <div class="demo-title"><i class="bi bi-key me-1"></i>Demo accounts</div>
+      <div class="demo-row"><span class="demo-role">Admin</span><span class="demo-cred">admin@rentalaccess.com / hash$9</span></div>
+      <div class="demo-row"><span class="demo-role">Host</span><span class="demo-cred">anna.gruber@example.com / hash$1</span></div>
+      <div class="demo-row"><span class="demo-role">Guest</span><span class="demo-cred">tom.baker@example.com / hash$4</span></div>
+      <div class="demo-row"><span class="demo-role">Cleaner</span><span class="demo-cred">cleaner@rentalaccess.com / hash$10</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

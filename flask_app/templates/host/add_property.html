@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Add Property — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-plus-circle text-accent me-2"></i>List a Property{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_host.html" %}{% endblock %}
+
+{% block content %}
+<form method="POST" id="addPropForm">
+<div class="row g-4">
+
+  <!-- Left column: core details -->
+  <div class="col-lg-7">
+
+    <!-- Basic info -->
+    <div class="card-white mb-4">
+      <div class="card-header-line"><h6>Property Details</h6></div>
+      <div class="p-4">
+        <div class="mb-3">
+          <label class="form-label">Title <span class="text-danger">*</span></label>
+          <input type="text" name="title" class="form-control" placeholder="e.g. Sunny Apartment in Vienna Centre" required maxlength="150"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="4" placeholder="Describe your property — what makes it special, nearby attractions, house rules…"></textarea>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Property Type <span class="text-danger">*</span></label>
+            <select name="property_type_id" class="form-select" required>
+              <option value="">— Select type —</option>
+              {% for t in prop_types %}
+              <option value="{{ t.property_type_id }}">{{ t.type_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">City <span class="text-danger">*</span></label>
+            <select name="city_id" class="form-select" required>
+              <option value="">— Select city —</option>
+              {% for c in cities %}
+              <option value="{{ c.city_id }}">{{ c.city_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label">Street Address <span class="text-danger">*</span></label>
+          <input type="text" name="street_address" class="form-control" placeholder="e.g. Kärntner Straße 12, 1010" required/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capacity & pricing -->
+    <div class="card-white mb-4">
+      <div class="card-header-line"><h6>Capacity & Pricing</h6></div>
+      <div class="p-4">
+        <div class="row g-3 mb-3">
+          <div class="col-4">
+            <label class="form-label">Bedrooms</label>
+            <input type="number" name="bedrooms" class="form-control" value="1" min="0" max="20"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label">Bathrooms</label>
+            <input type="number" name="bathrooms" class="form-control" value="1" min="1" max="20"/>
+          </div>
+          <div class="col-4">
+            <label class="form-label">Max Guests</label>
+            <input type="number" name="max_guests" class="form-control" value="2" min="1" max="50"/>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Currency</label>
+            <select name="currency_id" class="form-select">
+              {% for cur in currencies %}
+              <option value="{{ cur.currency_id }}" {{ 'selected' if cur.currency_code == 'EUR' }}>{{ cur.currency_code }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Nightly Rate <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text" style="border-radius:9px 0 0 9px;border:1.5px solid #e2e8f0;background:#f8fafc">€</span>
+              <input type="number" name="base_price_night" class="form-control" placeholder="0.00" min="1" step="0.01" required style="border-radius:0 9px 9px 0"/>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Cleaning Fee</label>
+            <div class="input-group">
+              <span class="input-group-text" style="border-radius:9px 0 0 9px;border:1.5px solid #e2e8f0;background:#f8fafc">€</span>
+              <input type="number" name="cleaning_fee" class="form-control" placeholder="0.00" min="0" step="0.01" style="border-radius:0 9px 9px 0"/>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label">Cancellation Policy <span class="text-danger">*</span></label>
+          <select name="cancellation_policy_id" class="form-select" required>
+            <option value="">— Select policy —</option>
+            {% for pol in policies %}
+            <option value="{{ pol.policy_id }}">{{ pol.policy_name }}{% if pol.description %} — {{ pol.description }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photos -->
+    <div class="card-white mb-4">
+      <div class="card-header-line"><h6><i class="bi bi-images me-2"></i>Photos</h6></div>
+      <div class="p-4">
+        <p class="text-muted mb-3" style="font-size:.83rem">Add up to 5 photo URLs. The first photo will be the cover image shown on search results.</p>
+        {% for i in range(1, 6) %}
+        <div class="mb-3">
+          <label class="form-label">Photo {{ i }}{% if i == 1 %} <span class="sb sb-indigo">Cover</span>{% endif %}</label>
+          <div class="d-flex gap-2">
+            <input type="url" name="photo_url_{{ i }}" class="form-control photo-url" placeholder="https://…" {% if i == 1 %}required{% endif %}/>
+            <input type="text" name="photo_caption_{{ i }}" class="form-control" placeholder="Caption (optional)" style="max-width:180px"/>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column: amenities -->
+  <div class="col-lg-5">
+    <div class="card-white" style="position:sticky;top:1.5rem">
+      <div class="card-header-line">
+        <h6><i class="bi bi-check2-square me-2"></i>Amenities</h6>
+        <span class="sb sb-gray" id="amenCount">0 selected</span>
+      </div>
+      <div class="p-4" style="max-height:520px;overflow-y:auto">
+        {% set ns = namespace(current_cat='') %}
+        {% for a in amenities %}
+          {% if a.category != ns.current_cat %}
+            {% if ns.current_cat %}</div>{% endif %}
+            {% set ns.current_cat = a.category %}
+            <div class="fw-semibold mb-2 {% if not loop.first %}mt-3{% endif %}" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary)">
+              {{ a.category or 'General' }}
+            </div>
+            <div class="row g-2">
+          {% endif %}
+          <div class="col-12">
+            <label class="d-flex align-items-center gap-2 p-2 rounded-2 amenity-row" style="cursor:pointer;font-size:.85rem;border:1.5px solid transparent;transition:all .1s">
+              <input type="checkbox" name="amenities" value="{{ a.amenity_id }}" class="amenity-cb" style="width:16px;height:16px;accent-color:#6366f1;flex-shrink:0"/>
+              {{ a.amenity_name }}
+            </label>
+          </div>
+        {% endfor %}
+        </div>
+      </div>
+
+      <div class="p-4 pt-0">
+        <button type="submit" class="btn btn-accent w-100 mt-3">
+          <i class="bi bi-house-add me-2"></i>List Property
+        </button>
+        <a href="{{ url_for('host.properties') }}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const cbs = document.querySelectorAll('.amenity-cb');
+  const lbl = document.getElementById('amenCount');
+  function updateCount() {
+    const n = [...cbs].filter(c => c.checked).length;
+    lbl.textContent = n + ' selected';
+    lbl.className = n > 0 ? 'sb sb-indigo' : 'sb sb-gray';
+  }
+  cbs.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const row = cb.closest('.amenity-row');
+      row.style.background = cb.checked ? '#e0e7ff' : '';
+      row.style.borderColor = cb.checked ? '#a5b4fc' : 'transparent';
+      updateCount();
+    });
+  });
+</script>
+{% endblock %}

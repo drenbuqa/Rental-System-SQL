@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Analytics — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-bar-chart-line text-accent me-2"></i>Analytics{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_admin.html" %}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- KPI row -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Total Revenue</div><div class="value">€{{ "{:,.0f}".format(kpi.total_revenue or 0) }}</div><div class="sub">Captured payments</div></div>
+      <div class="icon icon-green"><i class="bi bi-currency-euro"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Total Bookings</div><div class="value">{{ kpi.total_bookings }}</div><div class="sub">All time</div></div>
+      <div class="icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Avg Booking Value</div><div class="value">€{{ "{:,.0f}".format(kpi.avg_booking_value or 0) }}</div><div class="sub">Per booking</div></div>
+      <div class="icon icon-purple"><i class="bi bi-graph-up"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div><div class="label">Active Properties</div><div class="value">{{ kpi.active_properties }}</div><div class="sub">Listed</div></div>
+      <div class="icon icon-indigo"><i class="bi bi-house-door-fill"></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <!-- Revenue by month -->
+  <div class="col-lg-8">
+    <div class="card-white h-100">
+      <div class="card-header-line"><h6><i class="bi bi-bar-chart text-accent me-2"></i>Monthly Revenue</h6></div>
+      <div class="p-4">
+        <canvas id="revenueChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+  <!-- Bookings by status -->
+  <div class="col-lg-4">
+    <div class="card-white h-100">
+      <div class="card-header-line"><h6><i class="bi bi-pie-chart text-accent me-2"></i>Bookings by Status</h6></div>
+      <div class="p-4 d-flex flex-column align-items-center">
+        <canvas id="statusChart" height="170" style="max-width:200px"></canvas>
+        <div class="mt-3 w-100">
+          {% for s in status_counts %}
+          <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.8rem">
+            <span class="text-muted">{{ s.status_name|capitalize }}</span>
+            <span class="fw-bold">{{ s.cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Top properties -->
+  <div class="col-lg-7">
+    <div class="card-white">
+      <div class="card-header-line"><h6><i class="bi bi-trophy text-accent me-2"></i>Top Properties by Revenue</h6></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Property</th><th>City</th><th>Bookings</th><th>Revenue</th><th>Rating</th></tr></thead>
+          <tbody>
+          {% for p in top_properties %}
+          <tr>
+            <td class="fw-semibold" style="font-size:.855rem">{{ p.title }}</td>
+            <td class="text-muted">{{ p.city_name }}</td>
+            <td>{{ p.total_bookings }}</td>
+            <td class="fw-bold text-success">€{{ "{:,.0f}".format(p.total_revenue or 0) }}</td>
+            <td>{% if p.avg_rating %}<span class="text-warning fw-bold"><i class="bi bi-star-fill"></i> {{ "%.1f"|format(p.avg_rating) }}</span>{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- Top spending guests -->
+  <div class="col-lg-5">
+    <div class="card-white">
+      <div class="card-header-line"><h6><i class="bi bi-person-heart text-accent me-2"></i>Above-Average Spending Guests</h6></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Guest</th><th>Bookings</th><th>Total Spent</th></tr></thead>
+          <tbody>
+          {% for g in top_guests %}
+          <tr>
+            <td>
+              <div class="fw-medium" style="font-size:.855rem">{{ g.guest_name }}</div>
+              <div class="text-muted" style="font-size:.72rem">{{ g.email }}</div>
+            </td>
+            <td>{{ g.num_bookings }}</td>
+            <td class="fw-bold text-success">€{{ "{:,.0f}".format(g.total_spent or 0) }}</td>
+          </tr>
+          {% endfor %}
+          {% if not top_guests %}<tr><td colspan="3" class="text-center text-muted py-3">No data.</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const accent = '#6366f1';
+const green  = '#16a34a';
+
+// Revenue chart
+const revCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ revenue_months | tojson }},
+    datasets: [{
+      label: 'Revenue (€)',
+      data: {{ revenue_values | tojson }},
+      backgroundColor: 'rgba(99,102,241,.15)',
+      borderColor: accent,
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#f1f5f9' }, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// Status donut
+const stCtx = document.getElementById('statusChart').getContext('2d');
+new Chart(stCtx, {
+  type: 'doughnut',
+  data: {
+    labels: {{ status_labels | tojson }},
+    datasets: [{
+      data: {{ status_values | tojson }},
+      backgroundColor: ['#6366f1','#16a34a','#d97706','#e11d48','#0d9488'],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    cutout: '70%',
+    plugins: { legend: { display: false } }
+  }
+});
+</script>
+{% endblock %}

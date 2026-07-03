@@ -1,0 +1,7 @@
+<span class="nav-label">Admin</span>
+<a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Overview</a>
+<a href="{{ url_for('admin.analytics') }}" class="nav-link {% if request.endpoint == 'admin.analytics' %}active{% endif %}"><i class="bi bi-bar-chart-line"></i> Analytics</a>
+<a href="{{ url_for('admin.users') }}" class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}"><i class="bi bi-people"></i> Users</a>
+<a href="{{ url_for('admin.bookings') }}" class="nav-link {% if request.endpoint == 'admin.bookings' %}active{% endif %}"><i class="bi bi-calendar-check"></i> Bookings</a>
+<a href="{{ url_for('admin.access_audit') }}" class="nav-link {% if request.endpoint == 'admin.access_audit' %}active{% endif %}"><i class="bi bi-shield-lock"></i> Access Audit</a>
+<a href="{{ url_for('admin.unverified_guests') }}" class="nav-link {% if request.endpoint == 'admin.unverified_guests' %}active{% endif %}"><i class="bi bi-person-exclamation"></i> Unverified Guests</a>

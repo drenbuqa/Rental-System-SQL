@@ -1,0 +1,6 @@
+<span class="nav-label">Guest</span>
+<a href="{{ url_for('guest.dashboard') }}" class="nav-link {% if request.endpoint == 'guest.dashboard' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Overview</a>
+<a href="{{ url_for('guest.search') }}" class="nav-link {% if request.endpoint == 'guest.search' %}active{% endif %}"><i class="bi bi-search"></i> Search Properties</a>
+<a href="{{ url_for('guest.bookings') }}" class="nav-link {% if request.endpoint in ['guest.bookings','guest.review'] %}active{% endif %}"><i class="bi bi-calendar-check"></i> My Bookings</a>
+<a href="{{ url_for('guest.access_codes') }}" class="nav-link {% if request.endpoint == 'guest.access_codes' %}active{% endif %}"><i class="bi bi-key"></i> Access Codes</a>
+<a href="{{ url_for('guest.my_reviews') }}" class="nav-link {% if request.endpoint == 'guest.my_reviews' %}active{% endif %}"><i class="bi bi-star"></i> My Reviews</a>

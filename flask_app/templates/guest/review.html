@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Leave a Review — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-star text-accent me-2"></i>Leave a Review{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card-white">
+      <div class="card-header-line"><h6>{{ booking.property_title }}</h6></div>
+      <div class="p-4">
+
+        <div class="p-3 rounded-3 mb-4" style="background:#f8fafc;border:1px solid var(--border);font-size:.855rem">
+          <div class="fw-semibold mb-1">{{ booking.property_title }}</div>
+          <div class="text-muted">{{ booking.check_in_date }} → {{ booking.check_out_date }} · {{ booking.nights }} night(s)</div>
+        </div>
+
+        <form method="POST" id="reviewForm">
+
+          <!-- Overall rating -->
+          <div class="mb-4">
+            <label class="form-label">Overall Rating</label>
+            <div class="d-flex gap-3 align-items-center">
+              {% for i in range(1,6) %}
+              <label style="cursor:pointer;text-align:center">
+                <input type="radio" name="overall_rating" value="{{ i }}" class="visually-hidden" required/>
+                <i class="bi bi-star-fill overall-star" data-val="{{ i }}" style="font-size:2rem;color:#d1d5db;transition:color .1s;cursor:pointer;display:block"></i>
+                <span style="font-size:.7rem;color:var(--text-secondary)">{{ i }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Category scores -->
+          {% if categories %}
+          <div class="mb-4">
+            <label class="form-label">Category Scores</label>
+            <div class="row g-3">
+              {% for cat in categories %}
+              <div class="col-sm-6">
+                <div class="p-3 rounded-3" style="background:#f8fafc;border:1px solid var(--border)">
+                  <div class="fw-semibold mb-2" style="font-size:.82rem">{{ cat.category_name }}</div>
+                  <div class="d-flex gap-2">
+                    {% for i in range(1,6) %}
+                    <label style="cursor:pointer">
+                      <input type="radio" name="cat_{{ cat.category_id }}" value="{{ i }}" class="visually-hidden cat-radio" data-cat="{{ cat.category_id }}"/>
+                      <i class="bi bi-star-fill cat-star" data-cat="{{ cat.category_id }}" data-val="{{ i }}" style="font-size:1.2rem;color:#d1d5db;transition:color .1s;cursor:pointer"></i>
+                    </label>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Comment -->
+          <div class="mb-4">
+            <label class="form-label">Your Review</label>
+            <textarea name="comment" class="form-control" rows="4"
+              placeholder="Share your experience to help future guests…" required minlength="20"></textarea>
+            <div class="form-text">Minimum 20 characters.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-accent px-4">
+              <i class="bi bi-star-fill me-2"></i>Submit Review
+            </button>
+            <a href="{{ url_for('guest.bookings') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Overall stars
+  const oStars  = document.querySelectorAll('.overall-star');
+  const oRadios = document.querySelectorAll('input[name="overall_rating"]');
+  function highlightOverall(n) {
+    oStars.forEach((s,i) => s.style.color = i < n ? '#f59e0b' : '#d1d5db');
+  }
+  oStars.forEach((s,i) => {
+    s.addEventListener('mouseenter', () => highlightOverall(i+1));
+    s.addEventListener('click', () => { oRadios[i].checked = true; highlightOverall(i+1); });
+  });
+  document.querySelector('#reviewForm').addEventListener('mouseleave', () => {
+    const checked = [...oRadios].findIndex(r => r.checked);
+    highlightOverall(checked >= 0 ? checked+1 : 0);
+  });
+
+  // Category stars
+  document.querySelectorAll('.cat-star').forEach(s => {
+    const cat = s.dataset.cat;
+    const val = parseInt(s.dataset.val);
+    s.addEventListener('mouseenter', () => {
+      document.querySelectorAll(`.cat-star[data-cat="${cat}"]`).forEach((cs,i) => {
+        cs.style.color = parseInt(cs.dataset.val) <= val ? '#f59e0b' : '#d1d5db';
+      });
+    });
+    s.addEventListener('mouseleave', () => {
+      const checked = document.querySelector(`input[name="cat_${cat}"]:checked`);
+      const sel = checked ? parseInt(checked.value) : 0;
+      document.querySelectorAll(`.cat-star[data-cat="${cat}"]`).forEach(cs => {
+        cs.style.color = parseInt(cs.dataset.val) <= sel ? '#f59e0b' : '#d1d5db';
+      });
+    });
+    s.addEventListener('click', () => {
+      document.querySelector(`input[name="cat_${cat}"][value="${val}"]`).checked = true;
+      document.querySelectorAll(`.cat-star[data-cat="${cat}"]`).forEach(cs => {
+        cs.style.color = parseInt(cs.dataset.val) <= val ? '#f59e0b' : '#d1d5db';
+      });
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Guest Dashboard — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2 text-accent me-2"></i>My Dashboard{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div><div class="label">Upcoming Stays</div><div class="value">{{ upcoming }}</div><div class="sub">Confirmed bookings</div></div>
+      <div class="icon icon-blue"><i class="bi bi-calendar-event-fill"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div><div class="label">Total Spent</div><div class="value">€{{ "{:,.0f}".format(spent or 0) }}</div><div class="sub">All bookings</div></div>
+      <div class="icon icon-green"><i class="bi bi-currency-euro"></i></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div><div class="label">Active Door Codes</div><div class="value">{{ codes }}</div><div class="sub">Valid now</div></div>
+      <div class="icon icon-purple"><i class="bi bi-key-fill"></i></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card-white">
+      <div class="card-header-line"><h6><i class="bi bi-lightning-charge text-accent me-2"></i>Quick Actions</h6></div>
+      <div class="p-4 d-flex flex-wrap gap-2">
+        <a href="{{ url_for('guest.search') }}" class="btn btn-accent"><i class="bi bi-search me-2"></i>Find a Property</a>
+        <a href="{{ url_for('guest.bookings') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-calendar-check me-1"></i>My Bookings</a>
+        <a href="{{ url_for('guest.access_codes') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-key me-1"></i>Door Codes</a>
+        <a href="{{ url_for('guest.my_reviews') }}" class="btn btn-outline-secondary btn-sm px-3 py-2"><i class="bi bi-star me-1"></i>My Reviews</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card-white" style="border:1.5px solid #e0e7ff">
+      <div class="p-4 d-flex align-items-center justify-content-between gap-4 flex-wrap">
+        <div>
+          <div class="fw-bold mb-1" style="font-size:.95rem">Want to list your own property?</div>
+          <p class="text-muted mb-0" style="font-size:.83rem">Switch to a host account to list properties, manage bookings, assign access codes, and track revenue.</p>
+        </div>
+        <a href="/become-host" class="btn btn-accent btn-sm px-4" style="white-space:nowrap">
+          <i class="bi bi-house-add me-2"></i>Become a Host
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

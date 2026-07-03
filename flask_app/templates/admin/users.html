@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Users — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-people text-accent me-2"></i>Users{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_admin.html" %}{% endblock %}
+
+{% block content %}
+<div class="card-white">
+  <div class="card-header-line">
+    <h6>All Users</h6>
+    <span class="badge bg-secondary">{{ users|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>ID</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+      <tbody>
+      {% for u in users %}
+      <tr>
+        <td class="text-muted">{{ u.user_id }}</td>
+        <td class="fw-medium">{{ u.email }}</td>
+        <td>
+          {% set rc = {'admin':'red','host':'indigo','guest':'blue','staff':'amber'} %}
+          <span class="sb sb-{{ rc.get(u.account_role,'gray') }}">{{ u.account_role }}</span>
+        </td>
+        <td>
+          {% if u.is_active %}<span class="sb sb-green">Active</span>
+          {% else %}<span class="sb sb-red">Inactive</span>{% endif %}
+        </td>
+        <td class="text-muted">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.user_id) }}">
+            <button class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} py-1 px-2" style="font-size:.75rem">
+              {{ 'Deactivate' if u.is_active else 'Activate' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

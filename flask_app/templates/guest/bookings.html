@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}My Bookings — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-calendar-check text-accent me-2"></i>My Bookings{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_guest.html" %}{% endblock %}
+
+{% block content %}
+<div class="card-white">
+  <div class="card-header-line">
+    <h6>Booking History</h6>
+    <span class="badge bg-secondary">{{ bookings|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>#</th><th>Property</th><th>Dates</th><th>Nights</th><th>Total</th><th>Status</th><th>Payment</th><th>Review</th></tr></thead>
+      <tbody>
+      {% for b in bookings %}
+      {% set sc = {'confirmed':'green','pending':'yellow','cancelled':'red','completed':'gray','checked_in':'blue'} %}
+      {% set pc = {'captured':'green','initiated':'yellow','failed':'red','authorized':'blue'} %}
+      <tr>
+        <td class="text-muted">#{{ b.booking_id }}</td>
+        <td>
+          <div class="fw-semibold" style="font-size:.855rem">{{ b.property_title }}</div>
+          <div class="text-muted" style="font-size:.75rem">{{ b.city_name }}</div>
+        </td>
+        <td style="font-size:.82rem">
+          <div class="fw-medium">{{ b.check_in_date }}</div>
+          <div class="text-muted">{{ b.check_out_date }}</div>
+        </td>
+        <td class="text-muted">{{ b.nights }}</td>
+        <td class="fw-semibold">€{{ "{:,.2f}".format(b.total_amount or 0) }}</td>
+        <td><span class="sb sb-{{ sc.get(b.booking_status,'gray') }}">{{ b.booking_status }}</span></td>
+        <td><span class="sb sb-{{ pc.get(b.payment_status,'gray') }}">{{ b.payment_status or '—' }}</span></td>
+        <td>
+          {% if b.booking_status == 'completed' and not b.has_review %}
+            <a href="{{ url_for('guest.review', booking_id=b.booking_id) }}" class="btn btn-outline-warning btn-sm py-0 px-2" style="font-size:.75rem"><i class="bi bi-star me-1"></i>Review</a>
+          {% elif b.has_review %}
+            <span class="sb sb-green">Done</span>
+          {% else %}
+            <span class="text-muted" style="font-size:.75rem">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not bookings %}
+      <tr><td colspan="8" class="text-center text-muted py-5">
+        <i class="bi bi-calendar-x d-block display-5 mb-3"></i>
+        No bookings yet. <a href="{{ url_for('guest.search') }}" class="text-accent fw-semibold">Find a property →</a>
+      </td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

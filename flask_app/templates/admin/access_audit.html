@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Access Audit — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-shield-lock text-accent me-2"></i>Access Audit Log{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_admin.html" %}{% endblock %}
+
+{% block content %}
+<div class="card-white">
+  <div class="card-header-line">
+    <h6>Access Events</h6>
+    <span class="badge bg-secondary">{{ events|length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead><tr><th>Time</th><th>Event</th><th>Property</th><th>Location</th><th>Device</th><th>Code</th><th>Guest</th><th>Cleaner</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+      {% set ec = {'unlock_success':'green','unlock_failed':'red','lock':'gray','battery_low':'amber','alarm':'red'} %}
+      <tr>
+        <td class="text-muted" style="white-space:nowrap;font-size:.8rem">{{ e.event_time.strftime('%d %b %H:%M') if e.event_time else '—' }}</td>
+        <td><span class="sb sb-{{ ec.get(e.event_type,'gray') }}">{{ e.event_type }}</span></td>
+        <td class="fw-medium" style="font-size:.82rem">{{ e.property_title or '—' }}</td>
+        <td style="font-size:.82rem">{{ e.location_label or '—' }}</td>
+        <td class="text-muted font-monospace" style="font-size:.72rem">{{ e.serial_number or '—' }}</td>
+        <td class="font-monospace fw-semibold" style="font-size:.78rem;color:var(--accent)">{{ e.code_value or '—' }}</td>
+        <td style="font-size:.82rem">{{ e.guest_name or '—' }}</td>
+        <td style="font-size:.82rem">{{ e.assigned_cleaner or '—' }}</td>
+      </tr>
+      {% endfor %}
+      {% if not events %}<tr><td colspan="8" class="text-center text-muted py-4">No events found.</td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

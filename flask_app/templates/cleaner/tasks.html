@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}My Tasks — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-list-check text-accent me-2"></i>Cleaning Tasks{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_cleaner.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <span class="text-muted" style="font-size:.875rem">
+    <strong>{{ tasks|length }}</strong> task{{ 's' if tasks|length != 1 else '' }} assigned
+  </span>
+  <div class="d-flex gap-2" style="font-size:.78rem">
+    <span class="sb sb-green">Done: {{ tasks|selectattr('task_status','equalto','done')|list|length }}</span>
+    <span class="sb sb-blue">In Progress: {{ tasks|selectattr('task_status','equalto','in_progress')|list|length }}</span>
+    <span class="sb sb-yellow">Scheduled: {{ tasks|rejectattr('task_status','equalto','done')|rejectattr('task_status','equalto','in_progress')|list|length }}</span>
+  </div>
+</div>
+
+{% if tasks %}
+<div class="row g-3">
+  {% for t in tasks %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card-white h-100" style="display:flex;flex-direction:column">
+      <div class="p-4" style="flex:1;display:flex;flex-direction:column">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div style="flex:1;min-width:0">
+            <div class="fw-semibold" style="font-size:.95rem;line-height:1.3">{{ t.property_title }}</div>
+            <div class="text-muted mt-1" style="font-size:.75rem">
+              <i class="bi bi-calendar3 me-1"></i>Scheduled {{ t.scheduled_date }}
+            </div>
+          </div>
+          <div class="ms-3">
+            {% if t.task_status == 'done' %}<span class="sb sb-green">Done</span>
+            {% elif t.task_status == 'in_progress' %}<span class="sb sb-blue">In Progress</span>
+            {% else %}<span class="sb sb-yellow">Scheduled</span>{% endif %}
+          </div>
+        </div>
+
+        <!-- Booking dates -->
+        {% if t.check_in_date %}
+        <div class="mb-3 px-3 py-2 rounded-2" style="background:#f8fafc;border:1px solid var(--border);font-size:.8rem;color:var(--text-secondary)">
+          <i class="bi bi-arrow-left-right me-1"></i>
+          Guest stay: <strong>{{ t.check_in_date }}</strong> → <strong>{{ t.check_out_date }}</strong>
+        </div>
+        {% endif %}
+
+        <!-- Full notes — no truncation -->
+        {% if t.notes %}
+        <div class="mb-3" style="flex:1">
+          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);margin-bottom:.4rem">
+            <i class="bi bi-sticky me-1"></i>Notes
+          </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:.65rem .85rem;font-size:.83rem;line-height:1.55;color:#78350f">
+            {{ t.notes }}
+          </div>
+        </div>
+        {% else %}
+        <div class="mb-3 text-muted" style="font-size:.8rem;flex:1">No notes for this task.</div>
+        {% endif %}
+
+        <!-- Action -->
+        {% if t.task_status != 'done' %}
+        <form method="POST" action="{{ url_for('cleaner.mark_done', task_id=t.task_id) }}">
+          <button class="btn btn-success btn-sm w-100" style="font-size:.82rem">
+            <i class="bi bi-check-lg me-1"></i>Mark as Done
+          </button>
+        </form>
+        {% else %}
+        <div class="text-success d-flex align-items-center gap-2" style="font-size:.82rem;font-weight:600">
+          <i class="bi bi-check-circle-fill"></i>Task completed
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card-white p-5 text-center">
+  <i class="bi bi-check2-all display-4 text-muted d-block mb-3"></i>
+  <h6 class="text-muted">No tasks assigned</h6>
+  <p class="text-muted" style="font-size:.875rem">Tasks assigned by the host will appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

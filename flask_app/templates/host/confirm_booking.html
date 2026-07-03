@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Confirm Booking — RentalAccess{% endblock %}
+{% block page_title %}<i class="bi bi-check-circle text-accent me-2"></i>Confirm Booking{% endblock %}
+{% block sidebar_links %}{% include "includes/sidebar_host.html" %}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card-white">
+      <div class="card-header-line"><h6>Confirm &amp; Assign Access Code</h6></div>
+      <div class="p-4">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label">Pending Booking</label>
+            <select name="booking_id" class="form-select" required>
+              <option value="">— Select booking —</option>
+              {% for b in pending %}
+              <option value="{{ b.booking_id }}">#{{ b.booking_id }} — {{ b.title }} ({{ b.check_in_date }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Smart Device</label>
+            <select name="device_id" class="form-select" required>
+              <option value="">— Select device —</option>
+              {% for d in devices %}
+              <option value="{{ d.device_id }}">{{ d.serial_number }} — {{ d.location_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-4 p-3 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0">
+            <div class="d-flex align-items-center gap-2" style="color:#15803d;font-size:.85rem">
+              <i class="bi bi-shield-lock-fill"></i>
+              <span>A secure 6-digit access code will be <strong>generated automatically</strong> and shared with the guest.</span>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-accent w-100"><i class="bi bi-check-circle me-2"></i>Confirm Booking</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card-white">
+      <div class="card-header-line">
+        <h6>Pending Bookings</h6>
+        <span class="badge bg-warning text-dark">{{ pending|length }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>#</th><th>Property</th><th>Check-in</th><th>Check-out</th></tr></thead>
+          <tbody>
+          {% for b in pending %}
+          <tr>
+            <td class="text-muted">#{{ b.booking_id }}</td>
+            <td class="fw-medium">{{ b.title }}</td>
+            <td class="fw-medium">{{ b.check_in_date }}</td>
+            <td class="text-muted">{{ b.check_out_date }}</td>
+          </tr>
+          {% endfor %}
+          {% if not pending %}<tr><td colspan="4" class="text-center text-muted py-4">No pending bookings.</td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
