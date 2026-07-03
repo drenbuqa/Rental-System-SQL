@@ -302,3 +302,7 @@ INSERT INTO promotions (promo_code, description, discount_percent,
 INSERT INTO booking_promotions (booking_id, promotion_id, discount_amount) VALUES
 (2,1,168.00),
 (4,2,229.50);
+
+UPDATE access_codes 
+SET assigned_to = 10 
+WHERE code_type_id IN (2, 3);

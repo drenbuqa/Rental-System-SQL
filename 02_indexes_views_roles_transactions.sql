@@ -1,49 +1,45 @@
 -- =====================================================================
 -- Short-Term Rental & Smart Access Management System
--- 02_indexes_views_security_transactions.sql
--- Indexes, Views, Roles and Permission, Transactions
+-- 02_indexes_views_roles_transactions.sql
+-- Indexes, Views, Roles and Permissions, Transactions
 -- =====================================================================
 USE rental_access_db;
 
 -- =====================================================================
--- PART 1 — INDEXES
+-- PART 1 - INDEXES
+-- =====================================================================
+-- Note: idx_bookings_property_dates, idx_bookings_guest_status, and
+-- idx_events_device_time already exist from the original schema and
+-- are retained as-is. Only new indexes are created here.
+
+-- Property search by location and price.
+-- Replaces idx_properties_city_active_price with a cleaner version
+-- that omits the low-cardinality is_active boolean column.
+CREATE INDEX idx_properties_city_price
+    ON properties (city_id, base_price_night);
+
+-- Access code window lookups by booking and expiry.
+-- Replaces idx_codes_active_window with a more selective version.
+CREATE INDEX idx_codes_booking_validity
+    ON access_codes (booking_id, valid_until);
+
+-- Cleaner assignment lookups — new column added in schema upgrade.
+CREATE INDEX idx_codes_assigned_to
+    ON access_codes (assigned_to);
+
+-- Maintenance request status filtering per property.
+CREATE INDEX idx_maintenance_property_status
+    ON maintenance_requests (property_id, request_status);
+
+-- Message inbox queries per recipient.
+CREATE INDEX idx_messages_receiver_read
+    ON messages (receiver_id, is_read);
+
+
+-- =====================================================================
+-- PART 2 - VIEWS
 -- =====================================================================
 
--- Availability search: the most frequent query in the system.
--- Optimizes the NOT EXISTS overlap check in search_available and
--- the pre-insert validation inside create_booking in the Python app.
-CREATE INDEX idx_bookings_property_dates
-    ON bookings (property_id, check_in_date, check_out_date);
-
--- Guest booking history and status filtering.
--- Optimizes status filtering in upcoming_checkins in the Python app
--- and the v_upcoming_checkins view. guest_id leads the index and has
--- high cardinality; status_id filters within the small result set.
-CREATE INDEX idx_bookings_guest_status
-    ON bookings (guest_id, status_id);
-
--- Property search by location, active status, and price.
--- Optimizes the is_active = 1 filter in v_property_catalog and
--- the search_available function in the Python app. city_id leads
--- with high cardinality; is_active and base_price_night narrow further.
-CREATE INDEX idx_properties_city_active_price
-    ON properties (city_id, is_active, base_price_night);
-
--- Access code validity checks and expired code cleanup.
--- Optimizes purge_expired_codes DELETE in the Python app (is_active=0,
--- valid_until < NOW()) and the active code COUNT correlated subquery
--- inside upcoming_checkins (is_active=1).
-CREATE INDEX idx_codes_active_window
-    ON access_codes (is_active, valid_from, valid_until);
-
--- =====================================================================
--- PART 2 — VIEWS
--- =====================================================================
-
--- View 1: Public catalog — property with host, location, type and
--- aggregated review statistics. Hides internal columns (IBAN, tax no.).
--- LEFT JOIN to bookings and reviews so new properties with no bookings
--- or reviews still appear in the catalog.
 CREATE OR REPLACE VIEW v_property_catalog AS
 SELECT
     p.property_id,
@@ -55,7 +51,9 @@ SELECT
     hp.is_superhost,
     p.max_guests,
     p.bedrooms,
+    p.bathrooms,
     p.base_price_night,
+    p.cleaning_fee,
     cur.currency_code,
     COUNT(r.review_id)                      AS review_count,
     ROUND(AVG(r.overall_rating), 2)         AS avg_rating
@@ -71,18 +69,18 @@ LEFT JOIN reviews r     ON r.booking_id = b.booking_id AND r.is_visible = 1
 WHERE p.is_active = 1
 GROUP BY p.property_id, p.title, pt.type_name, ci.city_name, co.country_name,
          u.first_name, u.last_name, hp.is_superhost, p.max_guests,
-         p.bedrooms, p.base_price_night, cur.currency_code;
+         p.bedrooms, p.bathrooms, p.base_price_night, p.cleaning_fee,
+         cur.currency_code;
 
--- View 2: Operations dashboard — upcoming check-ins in the next 7 days.
--- Two correlated subqueries per row: one finds the most recent
--- verification status for the guest, one counts active door codes.
--- Used by operations staff every morning to confirm guests are ready.
 CREATE OR REPLACE VIEW v_upcoming_checkins AS
 SELECT
     b.booking_id,
     b.check_in_date,
+    b.check_out_date,
     p.title                                 AS property_title,
     CONCAT(u.first_name, ' ', u.last_name)  AS guest_name,
+    u.email                                 AS guest_email,
+    b.num_guests,
     bs.status_name                          AS booking_status,
     (SELECT gv.status
        FROM guest_verifications gv
@@ -97,71 +95,118 @@ FROM bookings b
 JOIN properties p        ON p.property_id = b.property_id
 JOIN users u             ON u.user_id = b.guest_id
 JOIN booking_statuses bs ON bs.status_id = b.status_id
-WHERE b.check_in_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-  AND bs.status_name IN ('confirmed','pending');
+WHERE b.check_in_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
+  AND bs.status_name IN ('confirmed', 'pending');
 
--- View 3: Host revenue summary — financial reporting per host.
--- COALESCE replaces NULL with 0 so hosts with no bookings show 0
--- rather than NULL in financial columns.
--- LEFT JOIN host_payouts with AND payout_status='paid' so only
--- completed payouts are summed, not pending ones.
 CREATE OR REPLACE VIEW v_host_revenue AS
 SELECT
     hp.host_id,
     CONCAT(u.first_name, ' ', u.last_name)  AS host_name,
+    hp.is_superhost,
+    COUNT(DISTINCT p.property_id)           AS total_properties,
     COUNT(DISTINCT b.booking_id)            AS total_bookings,
     COALESCE(SUM(b.total_amount), 0)        AS gross_revenue,
-    COALESCE(SUM(po.net_amount), 0)         AS net_paid_out
+    COALESCE(SUM(po.net_amount), 0)         AS net_paid_out,
+    COALESCE(SUM(b.total_amount), 0)
+        - COALESCE(SUM(po.net_amount), 0)   AS pending_payout
 FROM host_profiles hp
-JOIN users u            ON u.user_id = hp.host_id
-LEFT JOIN properties p  ON p.host_id = hp.host_id
-LEFT JOIN bookings b    ON b.property_id = p.property_id
+JOIN users u              ON u.user_id = hp.host_id
+LEFT JOIN properties p    ON p.host_id = hp.host_id
+LEFT JOIN bookings b      ON b.property_id = p.property_id
 LEFT JOIN host_payouts po ON po.booking_id = b.booking_id
                          AND po.payout_status = 'paid'
-GROUP BY hp.host_id, u.first_name, u.last_name;
+GROUP BY hp.host_id, u.first_name, u.last_name, hp.is_superhost;
 
--- View 4: Security audit — every lock event with full context.
--- Multiple LEFT JOINs preserve events that have no associated code or
--- guest — battery alerts and tamper alerts have no code, so a regular
--- JOIN would drop those rows from the audit log entirely.
 CREATE OR REPLACE VIEW v_access_audit AS
 SELECT
     ae.event_id,
     ae.event_time,
     ae.event_type,
-    p.title             AS property_title,
+    p.title                                         AS property_title,
     sd.location_label,
     sd.serial_number,
     ac.code_value,
+    act.type_name                                   AS code_type,
     b.booking_id,
-    CONCAT(u.first_name, ' ', u.last_name) AS guest_name
+    CONCAT(gu.first_name, ' ', gu.last_name)        AS guest_name,
+    CONCAT(cu.first_name, ' ', cu.last_name)        AS assigned_cleaner,
+    ae.details
 FROM access_events ae
-JOIN smart_devices sd       ON sd.device_id = ae.device_id
-JOIN properties p           ON p.property_id = sd.property_id
-LEFT JOIN access_codes ac   ON ac.code_id = ae.code_id
-LEFT JOIN bookings b        ON b.booking_id = ac.booking_id
-LEFT JOIN users u           ON u.user_id = b.guest_id;
+JOIN smart_devices sd           ON sd.device_id = ae.device_id
+JOIN properties p               ON p.property_id = sd.property_id
+LEFT JOIN access_codes ac       ON ac.code_id = ae.code_id
+LEFT JOIN access_code_types act ON act.code_type_id = ac.code_type_id
+LEFT JOIN bookings b            ON b.booking_id = ac.booking_id
+LEFT JOIN users gu              ON gu.user_id = b.guest_id
+LEFT JOIN users cu              ON cu.user_id = ac.assigned_to;
 
--- View 5: Compliance — guests with upcoming stays who are not yet
--- verified. NOT EXISTS subquery returns true when no approved
--- verification exists for the guest. Drives reminder emails.
 CREATE OR REPLACE VIEW v_unverified_upcoming_guests AS
 SELECT DISTINCT
     u.user_id,
     CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
     u.email,
     b.booking_id,
-    b.check_in_date
+    b.check_in_date,
+    DATEDIFF(b.check_in_date, CURDATE())   AS days_until_checkin
 FROM bookings b
 JOIN users u ON u.user_id = b.guest_id
 WHERE b.check_in_date >= CURDATE()
   AND NOT EXISTS (
         SELECT 1 FROM guest_verifications gv
-        WHERE gv.guest_id = b.guest_id AND gv.status = 'approved'
-  );
+        WHERE gv.guest_id = b.guest_id
+          AND gv.status = 'approved'
+  )
+ORDER BY b.check_in_date ASC;
+
+CREATE OR REPLACE VIEW v_property_performance AS
+SELECT
+    p.property_id,
+    p.title,
+    ci.city_name,
+    CONCAT(u.first_name, ' ', u.last_name)      AS host_name,
+    COUNT(DISTINCT b.booking_id)                AS total_bookings,
+    COALESCE(SUM(b.total_amount), 0)            AS total_revenue,
+    ROUND(AVG(r.overall_rating), 2)             AS avg_rating,
+    COUNT(DISTINCT r.review_id)                 AS review_count,
+    COALESCE(SUM(DATEDIFF(
+        b.check_out_date, b.check_in_date)), 0) AS total_nights_booked
+FROM properties p
+JOIN cities ci          ON ci.city_id = p.city_id
+JOIN host_profiles hp   ON hp.host_id = p.host_id
+JOIN users u            ON u.user_id = hp.host_id
+LEFT JOIN bookings b    ON b.property_id = p.property_id
+LEFT JOIN reviews r     ON r.booking_id = b.booking_id AND r.is_visible = 1
+GROUP BY p.property_id, p.title, ci.city_name, u.first_name, u.last_name;
+
+CREATE OR REPLACE VIEW v_guest_booking_history AS
+SELECT
+    u.user_id,
+    CONCAT(u.first_name, ' ', u.last_name)  AS guest_name,
+    b.booking_id,
+    p.title                                 AS property_title,
+    ci.city_name,
+    b.check_in_date,
+    b.check_out_date,
+    DATEDIFF(b.check_out_date,
+        b.check_in_date)                    AS nights,
+    b.total_amount,
+    bs.status_name                          AS booking_status,
+    ps.status_name                          AS payment_status,
+    CASE WHEN r.review_id IS NOT NULL
+         THEN 'Reviewed' ELSE 'Not reviewed' END AS review_status
+FROM bookings b
+JOIN users u             ON u.user_id = b.guest_id
+JOIN properties p        ON p.property_id = b.property_id
+JOIN cities ci           ON ci.city_id = p.city_id
+JOIN booking_statuses bs ON bs.status_id = b.status_id
+LEFT JOIN payments py    ON py.booking_id = b.booking_id
+LEFT JOIN payment_statuses ps ON ps.status_id = py.status_id
+LEFT JOIN reviews r      ON r.booking_id = b.booking_id
+ORDER BY b.check_in_date DESC;
+
 
 -- =====================================================================
--- PART 3 — ROLES AND PERMISSIONS
+-- PART 3 - ROLES AND PERMISSIONS
 -- =====================================================================
 
 DROP ROLE IF EXISTS 'role_admin', 'role_host', 'role_guest', 'role_cleaner';
@@ -170,62 +215,49 @@ DROP USER IF EXISTS 'app_host'@'localhost';
 DROP USER IF EXISTS 'app_guest'@'localhost';
 DROP USER IF EXISTS 'app_cleaner'@'localhost';
 
--- Step 1: define roles
 CREATE ROLE 'role_admin';
 CREATE ROLE 'role_host';
 CREATE ROLE 'role_guest';
 CREATE ROLE 'role_cleaner';
 
--- Step 2: grant privileges to roles
-
--- role_admin: full access to the application schema
 GRANT ALL PRIVILEGES ON rental_access_db.* TO 'role_admin';
 
--- role_host: manage own listings, pricing, access codes; read bookings
--- No DELETE on properties — prevents destroying listing history
--- No INSERT on bookings — hosts cannot fabricate reservations
--- SELECT on bookings only — not on payments or guest personal data
-GRANT SELECT, INSERT, UPDATE         ON rental_access_db.properties            TO 'role_host';
-GRANT SELECT, INSERT, UPDATE, DELETE ON rental_access_db.property_photos       TO 'role_host';
-GRANT SELECT, INSERT, DELETE         ON rental_access_db.property_amenities    TO 'role_host';
-GRANT SELECT, INSERT, UPDATE         ON rental_access_db.seasonal_pricing      TO 'role_host';
-GRANT SELECT, INSERT, UPDATE         ON rental_access_db.availability_calendar TO 'role_host';
-GRANT SELECT                         ON rental_access_db.bookings              TO 'role_host';
-GRANT SELECT                         ON rental_access_db.v_host_revenue        TO 'role_host';
-GRANT SELECT                         ON rental_access_db.v_upcoming_checkins   TO 'role_host';
-GRANT SELECT, INSERT                 ON rental_access_db.review_responses      TO 'role_host';
-GRANT SELECT, INSERT, UPDATE         ON rental_access_db.access_codes          TO 'role_host';
+GRANT SELECT, INSERT, UPDATE         ON rental_access_db.properties             TO 'role_host';
+GRANT SELECT, INSERT, UPDATE, DELETE ON rental_access_db.property_photos        TO 'role_host';
+GRANT SELECT, INSERT, DELETE         ON rental_access_db.property_amenities     TO 'role_host';
+GRANT SELECT, INSERT, UPDATE         ON rental_access_db.seasonal_pricing       TO 'role_host';
+GRANT SELECT, INSERT, UPDATE         ON rental_access_db.availability_calendar  TO 'role_host';
+GRANT SELECT                         ON rental_access_db.bookings               TO 'role_host';
+GRANT SELECT                         ON rental_access_db.v_host_revenue         TO 'role_host';
+GRANT SELECT                         ON rental_access_db.v_upcoming_checkins    TO 'role_host';
+GRANT SELECT                         ON rental_access_db.v_property_performance TO 'role_host';
+GRANT SELECT, INSERT                 ON rental_access_db.review_responses       TO 'role_host';
+GRANT SELECT, INSERT, UPDATE         ON rental_access_db.access_codes           TO 'role_host';
+GRANT SELECT, INSERT                 ON rental_access_db.maintenance_requests   TO 'role_host';
 
--- role_guest: read the public catalog, write own bookings and reviews
--- SELECT on v_property_catalog (not raw properties) — hides host IBAN,
--- coordinates, and internal columns from public view
-GRANT SELECT          ON rental_access_db.v_property_catalog TO 'role_guest';
-GRANT SELECT, INSERT  ON rental_access_db.bookings           TO 'role_guest';
-GRANT SELECT, INSERT  ON rental_access_db.booking_guests     TO 'role_guest';
-GRANT SELECT, INSERT  ON rental_access_db.reviews            TO 'role_guest';
-GRANT SELECT, INSERT  ON rental_access_db.review_scores      TO 'role_guest';
-GRANT SELECT, INSERT  ON rental_access_db.messages           TO 'role_guest';
+GRANT SELECT          ON rental_access_db.v_property_catalog      TO 'role_guest';
+GRANT SELECT          ON rental_access_db.v_guest_booking_history TO 'role_guest';
+GRANT SELECT, INSERT  ON rental_access_db.bookings                TO 'role_guest';
+GRANT SELECT, INSERT  ON rental_access_db.booking_guests          TO 'role_guest';
+GRANT SELECT, INSERT  ON rental_access_db.reviews                 TO 'role_guest';
+GRANT SELECT, INSERT  ON rental_access_db.review_scores           TO 'role_guest';
+GRANT SELECT, INSERT  ON rental_access_db.messages                TO 'role_guest';
+GRANT SELECT          ON rental_access_db.access_codes            TO 'role_guest';
 
--- role_cleaner: cleaning roster and check-in schedule only
--- No access to payments, guest data, or any financial information
-GRANT SELECT, UPDATE                 ON rental_access_db.cleaning_tasks        TO 'role_cleaner';
-GRANT SELECT                         ON rental_access_db.v_upcoming_checkins   TO 'role_cleaner';
+GRANT SELECT, UPDATE  ON rental_access_db.cleaning_tasks          TO 'role_cleaner';
+GRANT SELECT          ON rental_access_db.v_upcoming_checkins     TO 'role_cleaner';
+GRANT SELECT          ON rental_access_db.access_codes            TO 'role_cleaner';
 
--- Step 3: create login accounts
 CREATE USER 'app_admin'@'localhost'   IDENTIFIED BY 'Admin#2026!';
 CREATE USER 'app_host'@'localhost'    IDENTIFIED BY 'Host#2026!';
 CREATE USER 'app_guest'@'localhost'   IDENTIFIED BY 'Guest#2026!';
 CREATE USER 'app_cleaner'@'localhost' IDENTIFIED BY 'Clean#2026!';
 
--- Step 4: assign roles to users
 GRANT 'role_admin'   TO 'app_admin'@'localhost';
 GRANT 'role_host'    TO 'app_host'@'localhost';
 GRANT 'role_guest'   TO 'app_guest'@'localhost';
 GRANT 'role_cleaner' TO 'app_cleaner'@'localhost';
 
--- Step 5: activate roles automatically on login
--- Without this the role is inactive until the user manually runs
--- SET ROLE, which breaks application connections silently
 SET DEFAULT ROLE 'role_admin'   TO 'app_admin'@'localhost';
 SET DEFAULT ROLE 'role_host'    TO 'app_host'@'localhost';
 SET DEFAULT ROLE 'role_guest'   TO 'app_guest'@'localhost';
@@ -233,122 +265,304 @@ SET DEFAULT ROLE 'role_cleaner' TO 'app_cleaner'@'localhost';
 
 FLUSH PRIVILEGES;
 
+
 -- =====================================================================
--- PART 4 — TRANSACTIONS
+-- PART 4 - STORED PROCEDURES WITH TRANSACTIONS
 -- =====================================================================
 
--- TRANSACTION 1: Create a New Booking
--- Business event: Guest (Mia Holz, guest_id=7) books the Vienna Penthouse (property_id=2) for 4 nights.
-START TRANSACTION;
+DROP PROCEDURE IF EXISTS sp_create_booking;
+DROP PROCEDURE IF EXISTS sp_confirm_booking;
+DROP PROCEDURE IF EXISTS sp_cancel_booking;
+DROP PROCEDURE IF EXISTS sp_complete_stay;
+DROP PROCEDURE IF EXISTS sp_assign_cleaner_code;
 
-    INSERT INTO bookings (
-        property_id, guest_id, status_id, currency_id,
-        check_in_date, check_out_date, num_guests,
-        nightly_rate, total_amount, special_requests
-    ) VALUES (
-        2, 7, 1, 1,
-        '2026-08-01', '2026-08-05', 2,
-        320.00, 1410.00, 'High floor preferred if possible'
-    );
+DELIMITER $$
 
-    -- Save the new booking_id before any further inserts overwrite it.
-    -- LAST_INSERT_ID() would be overwritten by the next INSERT, so it
-    -- must be captured into a variable immediately after the booking INSERT.
-    SET @new_booking_id = LAST_INSERT_ID();
+CREATE PROCEDURE sp_create_booking(
+    IN  p_property_id      INT,
+    IN  p_guest_id         INT,
+    IN  p_check_in         DATE,
+    IN  p_check_out        DATE,
+    IN  p_num_guests       INT,
+    IN  p_nightly_rate     DECIMAL(10,2),
+    IN  p_total_amount     DECIMAL(10,2),
+    IN  p_special_requests TEXT,
+    OUT p_booking_id       INT,
+    OUT p_message          VARCHAR(255)
+)
+BEGIN
+    DECLARE v_overlap    INT DEFAULT 0;
+    DECLARE v_booking_id INT;
 
-    -- Register the primary traveler
-    INSERT INTO booking_guests (booking_id, full_name, date_of_birth, is_primary)
-    VALUES (@new_booking_id, 'Mia Holz', '2000-06-18', 1);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_message    = 'ERROR: unexpected failure - transaction rolled back';
+        SET p_booking_id = NULL;
+    END;
 
-    -- Record the fees applicable to this booking
-    INSERT INTO booking_fees (booking_id, fee_type_id, amount)
-    VALUES
-        (@new_booking_id, 1, 80.00),   -- Cleaning fee (fee_type_id=1)
-        (@new_booking_id, 2, 50.00);   -- Service fee  (fee_type_id=2)
+    START TRANSACTION;
 
-    -- Block the stay dates in the availability calendar
-    UPDATE availability_calendar
-    SET is_available = 0
-    WHERE property_id = 2
-      AND calendar_date BETWEEN '2026-08-01' AND '2026-08-04';
+    SELECT COUNT(*) INTO v_overlap
+    FROM bookings b
+    JOIN booking_statuses bs ON bs.status_id = b.status_id
+    WHERE b.property_id    = p_property_id
+      AND bs.status_name   IN ('confirmed', 'checked_in')
+      AND b.check_in_date  < p_check_out
+      AND b.check_out_date > p_check_in;
 
-COMMIT;
+    IF v_overlap > 0 THEN
+        ROLLBACK;
+        SET p_booking_id = NULL;
+        SET p_message    = 'ERROR: property already booked for the requested dates';
+    ELSE
+        INSERT INTO bookings (
+            property_id, guest_id, status_id, currency_id,
+            check_in_date, check_out_date, num_guests,
+            nightly_rate, total_amount, special_requests
+        ) VALUES (
+            p_property_id, p_guest_id,
+            (SELECT status_id FROM booking_statuses WHERE status_name = 'pending'),
+            1, p_check_in, p_check_out, p_num_guests,
+            p_nightly_rate, p_total_amount, p_special_requests
+        );
 
+        SET v_booking_id = LAST_INSERT_ID();
+        SAVEPOINT sp_booking_inserted;
 
--- TRANSACTION 2: Confirm Booking and Generate Access Code
--- The system confirms booking_id=4 (Mia + Berlin house) and issues a door code to the guest.
+        INSERT INTO booking_guests (booking_id, full_name, date_of_birth, is_primary)
+        SELECT v_booking_id, CONCAT(first_name, ' ', last_name), NULL, 1
+        FROM users WHERE user_id = p_guest_id;
 
-START TRANSACTION;
+        SAVEPOINT sp_guest_registered;
 
-    UPDATE bookings
-    SET status_id = 2
-    WHERE booking_id = 4;
+        INSERT INTO booking_fees (booking_id, fee_type_id, amount)
+        SELECT v_booking_id, fee_type_id,
+               CASE WHEN is_percentage = 0 THEN default_amount
+                    ELSE ROUND(p_total_amount * default_amount / 100, 2) END
+        FROM fee_types
+        WHERE fee_name IN ('Cleaning fee', 'Service fee');
 
-    -- Issue the access code tied to the Berlin front-door lock (device_id=5)
-    INSERT INTO access_codes (
-        device_id, booking_id, code_type_id,
-        code_value, valid_from, valid_until, is_active
-    ) VALUES (
-        5, 4, 1,
-        '334455',
-        '2026-07-01 15:00:00',
-        '2026-07-08 11:00:00',
-        1
-    );
+        SAVEPOINT sp_fees_recorded;
 
-COMMIT;
+        UPDATE availability_calendar
+        SET is_available = 0
+        WHERE property_id  = p_property_id
+          AND calendar_date BETWEEN p_check_in
+                                AND DATE_SUB(p_check_out, INTERVAL 1 DAY);
 
-
--- TRANSACTION 3: Cancel Booking and Process Refund
--- Booking_id=4 is cancelled. Under the Moderate policy the guest receives a 50% refund.
-
-START TRANSACTION;
-
-    UPDATE bookings
-    SET status_id = 5
-    WHERE booking_id = 4;
-
-    -- Deactivate the code so the cancelled guest can no longer enter
-    UPDATE access_codes
-    SET is_active = 0
-    WHERE booking_id = 4;
-
-    -- Record the 50% refund against the original payment (payment_id=4)
-    INSERT INTO refunds (payment_id, amount, reason)
-    VALUES (
-        4,
-        765.00,
-        'Guest cancellation under Moderate policy — 50% refund applied'
-    );
-
-    -- Free the dates so other guests can now book them
-    UPDATE availability_calendar
-    SET is_available = 1
-    WHERE property_id = 4
-      AND calendar_date BETWEEN '2026-07-01' AND '2026-07-07';
-
-COMMIT;
+        COMMIT;
+        SET p_booking_id = v_booking_id;
+        SET p_message    = 'SUCCESS: booking created';
+    END IF;
+END$$
 
 
--- TRANSACTION 4: Complete Stay and Process Host Payout
--- The booking created in Transaction 1 (Mia at the Vienna Penthouse) has checked out. 
--- The stay is marked complete and the host payout is created. Platform fee is 12% of gross.
+CREATE PROCEDURE sp_confirm_booking(
+    IN  p_booking_id  INT,
+    IN  p_device_id   INT,
+    IN  p_code_value  VARCHAR(40),
+    OUT p_message     VARCHAR(255)
+)
+BEGIN
+    DECLARE v_status   VARCHAR(50);
+    DECLARE v_checkin  DATE;
+    DECLARE v_checkout DATE;
 
-START TRANSACTION;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_message = 'ERROR: unexpected failure - transaction rolled back';
+    END;
 
-    UPDATE bookings
-    SET status_id = 4
-    WHERE booking_id = @new_booking_id;
+    START TRANSACTION;
 
-    -- 12% platform fee on 1410.00 gross = 169.20 fee, 1240.80 net
-    INSERT INTO host_payouts (
-        host_id, booking_id,
-        gross_amount, platform_fee, net_amount,
-        payout_status, payout_date
-    ) VALUES (
-        1, @new_booking_id,
-        1410.00, 169.20, 1240.80,
-        'pending', NULL
-    );
+    SELECT bs.status_name, b.check_in_date, b.check_out_date
+    INTO   v_status, v_checkin, v_checkout
+    FROM bookings b
+    JOIN booking_statuses bs ON bs.status_id = b.status_id
+    WHERE b.booking_id = p_booking_id;
 
-COMMIT;
+    IF v_status != 'pending' THEN
+        ROLLBACK;
+        SET p_message = CONCAT('ERROR: booking is not pending - current status: ', v_status);
+    ELSE
+        UPDATE bookings
+        SET status_id = (SELECT status_id FROM booking_statuses WHERE status_name = 'confirmed')
+        WHERE booking_id = p_booking_id;
+
+        SAVEPOINT sp_status_updated;
+
+        INSERT INTO access_codes (
+            device_id, booking_id, code_type_id,
+            code_value, valid_from, valid_until, is_active
+        ) VALUES (
+            p_device_id, p_booking_id,
+            (SELECT code_type_id FROM access_code_types WHERE type_name = 'Guest stay code'),
+            p_code_value,
+            TIMESTAMP(v_checkin,  '15:00:00'),
+            TIMESTAMP(v_checkout, '11:00:00'),
+            1
+        );
+
+        COMMIT;
+        SET p_message = 'SUCCESS: booking confirmed and access code issued';
+    END IF;
+END$$
+
+
+CREATE PROCEDURE sp_cancel_booking(
+    IN  p_booking_id    INT,
+    IN  p_payment_id    INT,
+    IN  p_refund_amount DECIMAL(10,2),
+    IN  p_refund_reason VARCHAR(255),
+    OUT p_message       VARCHAR(255)
+)
+BEGIN
+    DECLARE v_status      VARCHAR(50);
+    DECLARE v_property_id INT;
+    DECLARE v_checkin     DATE;
+    DECLARE v_checkout    DATE;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_message = 'ERROR: unexpected failure - transaction rolled back';
+    END;
+
+    START TRANSACTION;
+
+    SELECT bs.status_name, b.property_id, b.check_in_date, b.check_out_date
+    INTO   v_status, v_property_id, v_checkin, v_checkout
+    FROM bookings b
+    JOIN booking_statuses bs ON bs.status_id = b.status_id
+    WHERE b.booking_id = p_booking_id;
+
+    IF v_status NOT IN ('confirmed', 'pending') THEN
+        ROLLBACK;
+        SET p_message = CONCAT('ERROR: booking cannot be cancelled - current status: ', v_status);
+    ELSE
+        UPDATE bookings
+        SET status_id = (SELECT status_id FROM booking_statuses WHERE status_name = 'cancelled')
+        WHERE booking_id = p_booking_id;
+
+        SAVEPOINT sp_cancelled;
+
+        UPDATE access_codes
+        SET is_active = 0
+        WHERE booking_id = p_booking_id;
+
+        SAVEPOINT sp_codes_deactivated;
+
+        INSERT INTO refunds (payment_id, amount, reason)
+        VALUES (p_payment_id, p_refund_amount, p_refund_reason);
+
+        SAVEPOINT sp_refund_recorded;
+
+        UPDATE availability_calendar
+        SET is_available = 1
+        WHERE property_id  = v_property_id
+          AND calendar_date BETWEEN v_checkin
+                                AND DATE_SUB(v_checkout, INTERVAL 1 DAY);
+
+        COMMIT;
+        SET p_message = 'SUCCESS: booking cancelled, codes deactivated, refund recorded';
+    END IF;
+END$$
+
+
+CREATE PROCEDURE sp_complete_stay(
+    IN  p_booking_id INT,
+    IN  p_host_id    INT,
+    OUT p_message    VARCHAR(255)
+)
+BEGIN
+    DECLARE v_status VARCHAR(50);
+    DECLARE v_gross  DECIMAL(10,2);
+    DECLARE v_fee    DECIMAL(10,2);
+    DECLARE v_net    DECIMAL(10,2);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_message = 'ERROR: unexpected failure - transaction rolled back';
+    END;
+
+    START TRANSACTION;
+
+    SELECT bs.status_name, b.total_amount
+    INTO   v_status, v_gross
+    FROM bookings b
+    JOIN booking_statuses bs ON bs.status_id = b.status_id
+    WHERE b.booking_id = p_booking_id;
+
+    IF v_status != 'checked_in' THEN
+        ROLLBACK;
+        SET p_message = CONCAT('ERROR: booking must be checked_in - current status: ', v_status);
+    ELSE
+        UPDATE bookings
+        SET status_id = (SELECT status_id FROM booking_statuses WHERE status_name = 'completed')
+        WHERE booking_id = p_booking_id;
+
+        SAVEPOINT sp_completed;
+
+        SET v_fee = ROUND(v_gross * 0.12, 2);
+        SET v_net = ROUND(v_gross - v_fee, 2);
+
+        INSERT INTO host_payouts (
+            host_id, booking_id,
+            gross_amount, platform_fee, net_amount,
+            payout_status, payout_date
+        ) VALUES (
+            p_host_id, p_booking_id,
+            v_gross, v_fee, v_net,
+            'pending', NULL
+        );
+
+        COMMIT;
+        SET p_message = CONCAT('SUCCESS: stay completed - payout of ', v_net, ' EUR queued for host');
+    END IF;
+END$$
+
+
+CREATE PROCEDURE sp_assign_cleaner_code(
+    IN  p_code_id     INT,
+    IN  p_cleaner_id  INT,
+    IN  p_valid_from  DATETIME,
+    IN  p_valid_until DATETIME,
+    OUT p_message     VARCHAR(255)
+)
+BEGIN
+    DECLARE v_assignee INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_message = 'ERROR: unexpected failure - transaction rolled back';
+    END;
+
+    START TRANSACTION;
+
+    SELECT assigned_to INTO v_assignee
+    FROM access_codes
+    WHERE code_id = p_code_id;
+
+    IF v_assignee IS NOT NULL THEN
+        ROLLBACK;
+        SET p_message = 'ERROR: access code is already assigned to another cleaner';
+    ELSE
+        UPDATE access_codes
+        SET assigned_to = p_cleaner_id,
+            is_active   = 1,
+            valid_from  = p_valid_from,
+            valid_until = p_valid_until
+        WHERE code_id = p_code_id;
+
+        COMMIT;
+        SET p_message = 'SUCCESS: cleaner assigned and code activated';
+    END IF;
+END$$
+
+DELIMITER ;
+
+

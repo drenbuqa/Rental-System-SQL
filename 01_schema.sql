@@ -456,6 +456,7 @@ CREATE TABLE access_codes (
     device_id       INT          NOT NULL,
     booking_id      INT          NULL,
     code_type_id    INT          NOT NULL,
+    assigned_to     INT          NULL,
     code_value      VARCHAR(12)  NOT NULL,
     valid_from      DATETIME     NOT NULL,
     valid_until     DATETIME     NOT NULL,
@@ -467,7 +468,9 @@ CREATE TABLE access_codes (
     CONSTRAINT fk_codes_booking FOREIGN KEY (booking_id)
         REFERENCES bookings (booking_id) ON UPDATE CASCADE ON DELETE SET NULL,
     CONSTRAINT fk_codes_type FOREIGN KEY (code_type_id)
-        REFERENCES access_code_types (code_type_id) ON UPDATE CASCADE ON DELETE RESTRICT
+        REFERENCES access_code_types (code_type_id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_assigned_to FOREIGN KEY (assigned_to)
+        REFERENCES users (user_id) ON DELETE SET NULL
 );
 
 -- 38. access_events
