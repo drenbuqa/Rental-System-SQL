@@ -176,5 +176,3 @@ python app.py
 ## Authors
 
 Bora Elshani, Dren Buqa  
-B.Sc. Applied Data Science — Modul University Vienna  
-Database Design and Management Course, 2025
